@@ -34,9 +34,7 @@ workflows:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
     publishing:
-      email:
-        recipients:
-          - ${CM_BUILD_INITIATOR}
+      # Email notifications disabled to avoid validation error when recipient is empty.
 
   ios-testflight:
     name: iOS TestFlight (Capacitor)
@@ -107,8 +105,5 @@ workflows:
         key_id: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
         issuer_id: ${APP_STORE_CONNECT_ISSUER_ID}
         submit_to_testflight: true
-      email:
-        recipients:
-          - ${CM_BUILD_INITIATOR}
 
 
