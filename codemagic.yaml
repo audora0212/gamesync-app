@@ -46,6 +46,11 @@ workflows:
         script: |
           cd "$WORKING_DIRECTORY"
           npm ci || npm install
+      - name: Add Android platform and sync
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npx cap add android || true
+          npx cap sync android
       - name: Prepare Android SDK path
         script: |
           cd "$WORKING_DIRECTORY/android"
