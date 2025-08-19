@@ -33,6 +33,30 @@ workflows:
       - android/app/build/outputs/**/*.apk
     # No publishing section for Android to avoid validation error when empty
 
+  android-debug-preview:
+    name: Android debug preview (APK)
+    environment:
+      vars:
+        WORKING_DIRECTORY: .
+    scripts:
+      - name: Install tools
+        script: |
+          npm -v
+      - name: Install dependencies
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npm ci || npm install
+      - name: Prepare Android SDK path
+        script: |
+          cd "$WORKING_DIRECTORY/android"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Build Android debug APK
+        script: |
+          cd "$WORKING_DIRECTORY/android"
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/apk/debug/app-debug.apk
+
   ios-testflight:
     name: iOS TestFlight (Capacitor)
     max_build_duration: 90
@@ -101,5 +125,40 @@ workflows:
         key_id: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
         issuer_id: ${APP_STORE_CONNECT_ISSUER_ID}
         submit_to_testflight: true
+
+  ios-simulator-preview:
+    name: iOS simulator preview (.app)
+    environment:
+      vars:
+        WORKING_DIRECTORY: .
+      xcode: latest
+    scripts:
+      - name: Install tools
+        script: |
+          npm -v
+      - name: Install dependencies
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npm ci || npm install
+      - name: Add iOS platform and sync
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npx cap add ios || true
+          npx cap sync ios
+      - name: Cocoapods install
+        script: |
+          cd "$WORKING_DIRECTORY/ios/App"
+          pod install
+      - name: Build .app for iOS Simulator
+        script: |
+          cd "$WORKING_DIRECTORY/ios"
+          xcodebuild build \
+            -workspace App/App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator'
+    artifacts:
+      - /Users/builder/Library/Developer/Xcode/DerivedData/**/*.app
 
 
