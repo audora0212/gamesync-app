@@ -33,8 +33,7 @@ workflows:
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
-    publishing:
-      # Email notifications disabled to avoid validation error when recipient is empty.
+    # No publishing section for Android to avoid validation error when empty
 
   ios-testflight:
     name: iOS TestFlight (Capacitor)
