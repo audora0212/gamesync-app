@@ -1,0 +1,114 @@
+workflows:
+  android-internal:
+    name: Android Internal Testing (Capacitor)
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      groups:
+        - android_keystore
+        - firebase
+      vars:
+        WORKING_DIRECTORY: .
+        ANDROID_PACKAGE_NAME: cloud.gamesync.app
+    scripts:
+      - name: Install tools
+        script: |
+          curl -fsSL https://get.pnpm.io/install.sh | sh -
+          export PATH=~/Library/pnpm:$PATH
+          echo Using pnpm $(pnpm -v)
+      - name: Install dependencies
+        script: |
+          cd "$WORKING_DIRECTORY"
+          pnpm install
+      - name: Add Android platform and sync
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npx cap add android || true
+          echo "$FIREBASE_ANDROID_JSON" | base64 -d > android/app/google-services.json
+          npx cap sync android
+      - name: Build Android App Bundle
+        script: |
+          cd "$WORKING_DIRECTORY/android"
+          ./gradlew clean bundleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - ${CM_BUILD_INITIATOR}
+
+  ios-testflight:
+    name: iOS TestFlight (Capacitor)
+    max_build_duration: 90
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - app_store_connect
+        - ios_signing
+        - firebase
+      vars:
+        WORKING_DIRECTORY: .
+        IOS_SCHEME: App
+        IOS_PROJECT: ios/App/App.xcodeproj
+        IOS_WORKSPACE: ios/App/App.xcworkspace
+        IOS_CONFIGURATION: Release
+        IOS_PACKAGE_NAME: cloud.gamesync.app
+    scripts:
+      - name: Install tools
+        script: |
+          brew install pnpm || true
+          pnpm -v
+      - name: Install dependencies
+        script: |
+          cd "$WORKING_DIRECTORY"
+          pnpm install
+      - name: Add iOS platform and sync
+        script: |
+          cd "$WORKING_DIRECTORY"
+          npx cap add ios || true
+          mkdir -p ios/App
+          echo "$FIREBASE_IOS_PLIST" | base64 -d > ios/App/GoogleService-Info.plist
+          npx cap sync ios
+      - name: Configure iOS entitlements & URL scheme
+        script: |
+          cd "$WORKING_DIRECTORY/ios/App"
+          ENT="App/App.entitlements"
+          if [ ! -f "$ENT" ]; then
+            /usr/libexec/PlistBuddy -c 'Save' "$ENT"
+          fi
+          # aps-environment
+          /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT" || \
+          /usr/libexec/PlistBuddy -c "Set :aps-environment production" "$ENT"
+          # Associated Domains
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.associated-domains array" "$ENT" || true
+          /usr/libexec/PlistBuddy -c "Add :com.apple.developer.associated-domains:0 string applinks:gamesync.cloud" "$ENT" || true
+          # URL Types in Info.plist
+          PLIST="App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string cloud.gamesync.app" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string gamesync" "$PLIST" || true
+      - name: Cocoapods install
+        script: |
+          cd "$WORKING_DIRECTORY/ios/App"
+          pod install
+      - name: Build and export IPA
+        script: |
+          cd "$WORKING_DIRECTORY/ios"
+          xcodebuild -workspace App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath $PWD/build/App.xcarchive archive DEVELOPMENT_TEAM=$APPLE_DEVELOPER_TEAM_ID
+          xcodebuild -exportArchive -archivePath $PWD/build/App.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $PWD/build
+    artifacts:
+      - ios/build/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: ${APP_STORE_CONNECT_PRIVATE_KEY}
+        key_id: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
+        issuer_id: ${APP_STORE_CONNECT_ISSUER_ID}
+        submit_to_testflight: true
+      email:
+        recipients:
+          - ${CM_BUILD_INITIATOR}
+
+

@@ -1,0 +1,41 @@
+{
+  "name": "gamesync-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor hybrid wrapper for GameSync (iOS/Android)",
+  "author": "GameSync Team",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf android ios build node_modules",
+    "postinstall": "echo Postinstall complete",
+    "cap:init": "cap init GameSync cloud.gamesync.app --web-dir=www",
+    "cap:sync": "cap sync",
+    "cap:doctor": "cap doctor",
+    "android:add": "cap add android",
+    "ios:add": "cap add ios",
+    "android:open": "cap open android",
+    "ios:open": "cap open ios",
+    "dev:android": "cap run android -l --external",
+    "dev:ios": "cap run ios -l --external",
+    "build": "echo Remote web content (https://gamesync.cloud). Nothing to build.",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/browser": "^6.0.0",
+    "@capacitor/core": "6.1.2",
+    "@capacitor/device": "^6.0.0",
+    "@capacitor/preferences": "^6.0.1",
+    "@capacitor/push-notifications": "^6.0.0",
+    "capacitor-secure-storage-plugin": "^0.10.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "@types/node": "^20.14.10",
+    "eslint": "^9.8.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.5.4"
+  }
+}
