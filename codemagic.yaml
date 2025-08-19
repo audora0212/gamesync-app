@@ -13,13 +13,11 @@ workflows:
     scripts:
       - name: Install tools
         script: |
-          curl -fsSL https://get.pnpm.io/install.sh | sh -
-          export PATH=~/Library/pnpm:$PATH
-          echo Using pnpm $(pnpm -v)
+          npm -v
       - name: Install dependencies
         script: |
           cd "$WORKING_DIRECTORY"
-          pnpm install
+          npm ci || npm install
       - name: Add Android platform and sync
         script: |
           cd "$WORKING_DIRECTORY"
@@ -54,12 +52,11 @@ workflows:
     scripts:
       - name: Install tools
         script: |
-          brew install pnpm || true
-          pnpm -v
+          npm -v
       - name: Install dependencies
         script: |
           cd "$WORKING_DIRECTORY"
-          pnpm install
+          npm ci || npm install
       - name: Add iOS platform and sync
         script: |
           cd "$WORKING_DIRECTORY"

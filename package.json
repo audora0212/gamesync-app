@@ -6,6 +6,7 @@
   "author": "GameSync Team",
   "license": "MIT",
   "type": "module",
+  "packageManager": "npm@10",
   "scripts": {
     "clean": "rimraf android ios build node_modules",
     "postinstall": "echo Postinstall complete",
