@@ -70,7 +70,6 @@ workflows:
       groups:
         - app_store_connect
         - ios_signing
-        - firebase
       vars:
         WORKING_DIRECTORY: .
         IOS_SCHEME: App
