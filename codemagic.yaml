@@ -122,6 +122,24 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string cloud.gamesync.app" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string gamesync" "$PLIST" || true
+      - name: Prepare code signing (fetch provisioning profiles via ASC API)
+        script: |
+          set -euo pipefail
+          cd "$WORKING_DIRECTORY"
+          # Initialize keychain for signing assets
+          keychain initialize
+          # Fetch distribution signing files for the bundle id
+          app-store-connect fetch-signing-files "${IOS_PACKAGE_NAME}" \
+            --type IOS_APP_STORE \
+            --create \
+            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
+            --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}" \
+            --api-key "${APP_STORE_CONNECT_PRIVATE_KEY}" \
+            --save
+          # Import certificates to the keychain
+          keychain add-certificates
+          # Apply provisioning profiles to the Xcode project/workspace
+          xcode-project use-profiles
       - name: Cocoapods install
         script: |
           cd "$WORKING_DIRECTORY/ios/App"
@@ -129,8 +147,41 @@ workflows:
       - name: Build and export IPA
         script: |
           cd "$WORKING_DIRECTORY/ios"
-          xcodebuild -workspace App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath $PWD/build/App.xcarchive archive DEVELOPMENT_TEAM=$APPLE_DEVELOPER_TEAM_ID
-          xcodebuild -exportArchive -archivePath $PWD/build/App.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $PWD/build
+          # Ensure exportOptions.plist exists (fallback)
+          if [ ! -f exportOptions.plist ]; then
+            cat > exportOptions.plist <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>method</key><string>app-store</string>
+  <key>signingStyle</key><string>automatic</string>
+  <key>destination</key><string>export</string>
+  <key>compileBitcode</key><false/>
+  <key>uploadSymbols</key><true/>
+</dict></plist>
+PLIST
+          fi
+          # Archive with automatic signing and allow provisioning updates
+          xcodebuild \
+            -workspace App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$PWD/build/App.xcarchive" \
+            archive \
+            DEVELOPMENT_TEAM="$APPLE_DEVELOPER_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_ALLOWED=YES \
+            -allowProvisioningUpdates
+          # Export IPA
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/App.xcarchive" \
+            -exportOptionsPlist exportOptions.plist \
+            -exportPath "$PWD/build" \
+            -allowProvisioningUpdates
+      - name: Cleanup keychain
+        script: |
+          keychain cleanup
     artifacts:
       - ios/build/*.ipa
     publishing:
