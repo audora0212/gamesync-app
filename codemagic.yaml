@@ -130,16 +130,22 @@ workflows:
           keychain initialize
           # Fetch distribution signing files for the bundle id
           KEY_FILE="$(mktemp).p8"
-          # Normalize PRIVATE KEY content: handle literal \n, trim CR, ensure trailing newline
-          if echo "${APP_STORE_CONNECT_PRIVATE_KEY}" | grep -q "\\n"; then
-            echo "Detected escaped newlines in APP_STORE_CONNECT_PRIVATE_KEY; normalizing"
-            printf "%s" "${APP_STORE_CONNECT_PRIVATE_KEY}" | sed 's/\\n/\n/g' | tr -d '\r' > "${KEY_FILE}"
+          RAW="${APP_STORE_CONNECT_PRIVATE_KEY}"
+          # Try raw PEM (with or without escaped newlines); otherwise try base64 decode
+          if echo "${RAW}" | grep -q "BEGIN PRIVATE KEY"; then
+            if echo "${RAW}" | grep -q "\\n"; then
+              echo "Detected escaped newlines in PRIVATE KEY; normalizing"
+              printf "%s" "${RAW}" | sed 's/\\n/\n/g' | tr -d '\r' > "${KEY_FILE}"
+            else
+              printf "%s\n" "${RAW}" | tr -d '\r' > "${KEY_FILE}"
+            fi
           else
-            printf "%s\n" "${APP_STORE_CONNECT_PRIVATE_KEY}" | tr -d '\r' > "${KEY_FILE}"
+            echo "Attempting base64 decode of APP_STORE_CONNECT_PRIVATE_KEY"
+            printf "%s" "${RAW}" | base64 -d > "${KEY_FILE}" 2>/dev/null || true
           fi
-          # Quick sanity check
+          # Sanity check
           if ! head -n1 "${KEY_FILE}" | grep -q "BEGIN PRIVATE KEY"; then
-            echo "ERROR: APP_STORE_CONNECT_PRIVATE_KEY does not look like a PEM private key (BEGIN PRIVATE KEY missing)" >&2
+            echo "ERROR: Provided APP_STORE_CONNECT_PRIVATE_KEY is not a valid PEM (missing BEGIN PRIVATE KEY)" >&2
             exit 2
           fi
           app-store-connect fetch-signing-files "${IOS_PACKAGE_NAME}" \
