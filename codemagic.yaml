@@ -81,7 +81,7 @@ workflows:
         IOS_CONFIGURATION: Release
         IOS_PACKAGE_NAME: cloud.gamesync.app
         # Optional: set marketing version from environment (fallback 1.0.0)
-        APP_VERSION: 1.0.0
+        APP_VERSION: 1.0.1
     scripts:
       - name: Install tools
         script: |
