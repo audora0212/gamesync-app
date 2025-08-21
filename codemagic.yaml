@@ -130,7 +130,18 @@ workflows:
           keychain initialize
           # Fetch distribution signing files for the bundle id
           KEY_FILE="$(mktemp).p8"
-          printf "%s" "${APP_STORE_CONNECT_PRIVATE_KEY}" > "${KEY_FILE}"
+          # Normalize PRIVATE KEY content: handle literal \n, trim CR, ensure trailing newline
+          if echo "${APP_STORE_CONNECT_PRIVATE_KEY}" | grep -q "\\n"; then
+            echo "Detected escaped newlines in APP_STORE_CONNECT_PRIVATE_KEY; normalizing"
+            printf "%s" "${APP_STORE_CONNECT_PRIVATE_KEY}" | sed 's/\\n/\n/g' | tr -d '\r' > "${KEY_FILE}"
+          else
+            printf "%s\n" "${APP_STORE_CONNECT_PRIVATE_KEY}" | tr -d '\r' > "${KEY_FILE}"
+          fi
+          # Quick sanity check
+          if ! head -n1 "${KEY_FILE}" | grep -q "BEGIN PRIVATE KEY"; then
+            echo "ERROR: APP_STORE_CONNECT_PRIVATE_KEY does not look like a PEM private key (BEGIN PRIVATE KEY missing)" >&2
+            exit 2
+          fi
           app-store-connect fetch-signing-files "${IOS_PACKAGE_NAME}" \
             --type IOS_APP_STORE \
             --create \
