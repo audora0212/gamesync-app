@@ -72,6 +72,7 @@ workflows:
       groups:
         - app_store_connect
         - ios_signing
+      xcode: latest
       vars:
         WORKING_DIRECTORY: .
         IOS_SCHEME: App
@@ -79,6 +80,8 @@ workflows:
         IOS_WORKSPACE: ios/App/App.xcworkspace
         IOS_CONFIGURATION: Release
         IOS_PACKAGE_NAME: cloud.gamesync.app
+        # Optional: set marketing version from environment (fallback 1.0.0)
+        APP_VERSION: 1.0.0
     scripts:
       - name: Install tools
         script: |
@@ -124,6 +127,20 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string cloud.gamesync.app" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string gamesync" "$PLIST" || true
+          # Background modes (remote notifications)
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" || true
+      - name: Set version and build number
+        script: |
+          cd "$WORKING_DIRECTORY/ios/App"
+          PLIST="App/Info.plist"
+          # Marketing version (e.g., 1.0.0)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_VERSION}" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string ${APP_VERSION}" "$PLIST"
+          # Build number from Codemagic's BUILD_NUMBER
+          BNUM=${BUILD_NUMBER:-1}
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BNUM}" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string ${BNUM}" "$PLIST"
       - name: Prepare code signing (fetch provisioning profiles via ASC API)
         script: |
           set -euo pipefail
@@ -142,6 +159,27 @@ workflows:
         script: |
           cd "$WORKING_DIRECTORY/ios/App"
           pod install
+      - name: Create exportOptions.plist
+        script: |
+          cd "$WORKING_DIRECTORY/ios"
+          cat > exportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>${APPLE_DEVELOPER_TEAM_ID}</string>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>destination</key>
+            <string>export</string>
+          </dict>
+          </plist>
+          EOF
       - name: Build and export IPA
         script: |
           cd "$WORKING_DIRECTORY/ios"
