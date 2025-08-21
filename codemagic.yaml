@@ -129,13 +129,15 @@ workflows:
           # Initialize keychain for signing assets
           keychain initialize
           # Fetch distribution signing files for the bundle id
+          KEY_FILE="$(mktemp).p8"
+          printf "%s" "${APP_STORE_CONNECT_PRIVATE_KEY}" > "${KEY_FILE}"
           app-store-connect fetch-signing-files "${IOS_PACKAGE_NAME}" \
             --type IOS_APP_STORE \
             --create \
             --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
             --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}" \
-            --api-key "${APP_STORE_CONNECT_PRIVATE_KEY}" \
-            --save
+            --private-key @"${KEY_FILE}"
+          rm -f "${KEY_FILE}"
           # Import certificates to the keychain
           keychain add-certificates
           # Apply provisioning profiles to the Xcode project/workspace
