@@ -68,7 +68,6 @@ workflows:
     # instance_type omitted to use default allowed machine for current plan
     environment:
       groups:
-        - app_store_connect
         - ios_signing
       vars:
         WORKING_DIRECTORY: .
@@ -128,33 +127,10 @@ workflows:
           cd "$WORKING_DIRECTORY"
           # Initialize keychain for signing assets
           keychain initialize
-          # Fetch distribution signing files for the bundle id
-          KEY_FILE="$(mktemp).p8"
-          RAW="${APP_STORE_CONNECT_PRIVATE_KEY}"
-          # Try raw PEM (with or without escaped newlines); otherwise try base64 decode
-          if echo "${RAW}" | grep -q "BEGIN PRIVATE KEY"; then
-            if echo "${RAW}" | grep -q "\\n"; then
-              echo "Detected escaped newlines in PRIVATE KEY; normalizing"
-              printf "%s" "${RAW}" | sed 's/\\n/\n/g' | tr -d '\r' > "${KEY_FILE}"
-            else
-              printf "%s\n" "${RAW}" | tr -d '\r' > "${KEY_FILE}"
-            fi
-          else
-            echo "Attempting base64 decode of APP_STORE_CONNECT_PRIVATE_KEY"
-            printf "%s" "${RAW}" | base64 -d > "${KEY_FILE}" 2>/dev/null || true
-          fi
-          # Sanity check
-          if ! head -n1 "${KEY_FILE}" | grep -q "BEGIN PRIVATE KEY"; then
-            echo "ERROR: Provided APP_STORE_CONNECT_PRIVATE_KEY is not a valid PEM (missing BEGIN PRIVATE KEY)" >&2
-            exit 2
-          fi
+          # Fetch signing files using UI-integrated App Store Connect credentials
           app-store-connect fetch-signing-files "${IOS_PACKAGE_NAME}" \
             --type IOS_APP_STORE \
-            --create \
-            --issuer-id "${APP_STORE_CONNECT_ISSUER_ID}" \
-            --key-id "${APP_STORE_CONNECT_KEY_IDENTIFIER}" \
-            --private-key @"${KEY_FILE}"
-          rm -f "${KEY_FILE}"
+            --create
           # Import certificates to the keychain
           keychain add-certificates
           # Apply provisioning profiles to the Xcode project/workspace
@@ -191,9 +167,6 @@ workflows:
       - ios/build/*.ipa
     publishing:
       app_store_connect:
-        api_key: ${APP_STORE_CONNECT_PRIVATE_KEY}
-        key_id: ${APP_STORE_CONNECT_KEY_IDENTIFIER}
-        issuer_id: ${APP_STORE_CONNECT_ISSUER_ID}
         submit_to_testflight: true
 
   ios-simulator-preview:
