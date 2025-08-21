@@ -91,7 +91,17 @@ workflows:
           cd "$WORKING_DIRECTORY"
           npx cap add ios || true
           mkdir -p ios/App
-          echo "$FIREBASE_IOS_PLIST" | base64 -d > ios/App/GoogleService-Info.plist
+          if [ -n "${FIREBASE_IOS_PLIST}" ]; then
+            echo "Using FIREBASE_IOS_PLIST env to create GoogleService-Info.plist"
+            echo "$FIREBASE_IOS_PLIST" | base64 -d > ios/App/GoogleService-Info.plist
+          elif [ -f "GoogleService-Info.plist" ]; then
+            echo "Using repository GoogleService-Info.plist from working directory"
+            cp GoogleService-Info.plist ios/App/GoogleService-Info.plist
+          elif [ -f "ios/App/GoogleService-Info.plist" ]; then
+            echo "GoogleService-Info.plist already exists, skipping copy"
+          else
+            echo "WARNING: GoogleService-Info.plist not provided (set FIREBASE_IOS_PLIST or place file at repo root)"
+          fi
           npx cap sync ios
       - name: Configure iOS entitlements & URL scheme
         script: |
