@@ -179,9 +179,9 @@ workflows:
             -exportOptionsPlist /Users/builder/export_options.plist \
             -exportPath "$PWD/build" \
             -allowProvisioningUpdates
-      - name: Cleanup keychain
+      - name: Lock keychain
         script: |
-          keychain cleanup
+          keychain lock
     artifacts:
       - ios/build/*.ipa
     publishing:
