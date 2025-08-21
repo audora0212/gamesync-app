@@ -66,6 +66,8 @@ workflows:
     name: iOS TestFlight (Capacitor)
     max_build_duration: 90
     # instance_type omitted to use default allowed machine for current plan
+    integrations:
+      app_store_connect: GameSync api
     environment:
       groups:
         - ios_signing
