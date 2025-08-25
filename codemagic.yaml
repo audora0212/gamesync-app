@@ -130,6 +130,11 @@ workflows:
           # Background modes (remote notifications)
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" || true
+      - name: Ensure CODE_SIGN_ENTITLEMENTS is set in Xcode target
+        script: |
+          gem install xcodeproj --no-document || true
+          cd "$WORKING_DIRECTORY/ios/App"
+          ruby -e "require 'xcodeproj'; p=Xcodeproj::Project.open('App.xcodeproj'); t=p.targets.find{|t| t.name=='App'}; t.build_configurations.each{|c| c.build_settings['CODE_SIGN_ENTITLEMENTS']='App/App.entitlements'}; p.save"
       - name: Set version and build number
         script: |
           cd "$WORKING_DIRECTORY/ios/App"
