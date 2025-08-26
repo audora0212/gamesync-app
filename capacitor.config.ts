@@ -17,7 +17,10 @@ const config: CapacitorConfig = {
     captureInput: true
   },
   ios: {
-    contentInset: 'automatic'
+    contentInset: 'automatic',
+    // URL Scheme for deep linking (gamesync://)
+    // Info.plist에 CFBundleURLSchemes로 추가됩니다
+    scheme: 'gamesync'
   },
   plugins: {
     App: {
