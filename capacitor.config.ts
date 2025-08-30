@@ -12,10 +12,6 @@ const config: CapacitorConfig = {
     cleartext: false,
     allowNavigation: ['gamesync.cloud', '*.gamesync.cloud']
   },
-  android: {
-    allowMixedContent: false,
-    captureInput: true
-  },
   ios: {
     contentInset: 'automatic',
     // URL Scheme for deep linking (gamesync://)
